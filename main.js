@@ -46,24 +46,24 @@ function createRepo({token, name, description, isPrivate}){
 /**
  * Get a branch using Github API. Based on the [Github API documentation](https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#get-a-reference).
  * 
- * @typedef {object} getBranchResponse
-  * @prop {string} getBranchResponse.ref Takes the form of 'refs/heads/<branchName>'
-  * @prop {string} getBranchResponse.node_id
-  * @prop {string} getBranchResponse.url The link to the branch
-  * @prop {object} getBranchResponse.object
-  * @prop {string} getBranchResponse.object.sha The commit sha
-  * @prop {string} getBranchResponse.object.type I've only seen this be 'commit'
-  * @prop {string} getBranchResponse.object.url Seems to be a url to JSON page with most recent commit details
+ * @typedef {object} getReferenceResponse
+  * @prop {string} getReferenceResponse.ref Takes the form of 'refs/heads/<branchName>'
+  * @prop {string} getReferenceResponse.node_id
+  * @prop {string} getReferenceResponse.url The link to the branch
+  * @prop {object} getReferenceResponse.object
+  * @prop {string} getReferenceResponse.object.sha The commit sha
+  * @prop {string} getReferenceResponse.object.type I've only seen this be 'commit'
+  * @prop {string} getReferenceResponse.object.url Seems to be a url to JSON page with most recent commit details
  * 
  * @param {object} config
   * @param {string} config.owner Who owns the repo
   * @param {string} config.repo The name of the repo. Capitalization doesn't matter.
-  * @param {string} config.[token] Optional auth token. Apparently you won't get rate limtied as much if you provide it.
+  * @param {string} [config.token] Optional auth token. Apparently you won't get rate limtied as much if you provide it.
   * @param {string} config.branchName The name of the branch.
  *
- * @return {getBranchResponse}
+ * @return {getReferenceResponse}
  */
-function getBranch({owner, repo, branchName, token}){
+function getReference({owner, repo, branchName, token}){
   // The endpoint is: /repos/{owner}/{repo}/git/ref/{ref} 
   // The {ref} part is "heads/<branchName>" for branches or "tags/<tagName>" for tags
   const urlGetBranch = `https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${branchName}`
@@ -77,6 +77,41 @@ function getBranch({owner, repo, branchName, token}){
   }
   const result = UrlFetchApp.fetch(urlGetBranch, options)
   return JSON.parse(result.getContentText())
+}
+
+/**
+ * https://docs.github.com/en/rest/branches/branches?apiVersion=2022-11-28#get-a-branch
+ * @typedef {object} getBranchResponse
+ * @prop {object} commit
+ * @prop {string} sha
+ * @prop {string} node_id
+ * @prop {GithubApi.CommitDetails} commit
+ * @prop {GithubApi.ParentCommit[]} parents
+ * 
+ *  @param {object} config
+  * @param {string} config.owner Who owns the repo
+  * @param {string} config.repo The name of the repo. Capitalization doesn't matter.
+  * @param {string} [config.token] Optional auth token. Apparently you won't get rate limtied as much if you provide it.
+  * @param {string} config.branchName The name of the branch.
+ *
+ */
+function getBranch({owner, repo, branchName, token}){
+  const urlGetBranch = `https://api.github.com/repos/${owner}/${repo}/branches/${branchName}`
+  const headers = {
+    accept: 'application/vnd.github+json',
+    authorization: token ? `Bearer ${token}` : '',
+  }
+  const options = {
+    headers,
+    // muteHttpExceptions: true
+  }
+  const result = UrlFetchApp.fetch(urlGetBranch, options)
+  return JSON.parse(result.getContentText())
+}
+
+function calling2(){
+  console.log(getBranch({owner:'olivercreativeworks', repo:'GithubApp', branchName:'testBranch'}))
+  // console.log(getBranch({owner:'olivercreativeworks', repo:'GithubApp', branchName:'testBranch'}))
 }
 
 /**
@@ -119,7 +154,6 @@ function createBranch({owner, repo, branchName, token, sha}) {
   const result = UrlFetchApp.fetch(urlCreateRef, options)
   return JSON.parse(result.getContentText())
 }
-
 /**
  * Deletes the branch. Throws if the branch was not deleted. Based on the [Github API documentation](https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#delete-a-reference).
  * 
@@ -187,9 +221,8 @@ function deleteBranch({owner, repo, branchName, token}){
  * @return {getFileResponse}
  */
 function getFile({owner, repo, path, branchName, token}){
-  const ref = branchName ? `refs/heads/${branchName}}` : ''
-  const query = ref ? encodeURIComponent(`?ref=${ref}`) : ''
-  const getContentUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?${query}`
+  const ref = branchName ? `?ref=${encodeURIComponent(branchName)}` : ''
+  const getContentUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}${ref}`
   const headers = {
     accept: 'application/vnd.github+json',
     authorization: token ? `Bearer ${token}` : '',
@@ -270,7 +303,7 @@ function createOrUpdateFile(fileContent, commitMessage, {owner, repo, path, sha,
     method: 'PUT',
     headers,
     payload: JSON.stringify(payload),
-    // muteHttpExceptions: true,
+    muteHttpExceptions: true,
   }
   const response = UrlFetchApp.fetch(url, options);
   return JSON.parse(response.getContentText());
@@ -337,8 +370,6 @@ function merge({owner, repo, token, base, head, commitMessage}){
  * @return {createBlobResponse}
  */
 function createBlob({owner, repo, token, content}){
-//   post
-// /repos/{owner}/{repo}/git/blobs
   const url = `https://api.github.com/repos/${owner}/${repo}/git/blobs`
   const headers = {
     accept : 'application/vnd.github+json',
@@ -404,7 +435,6 @@ function createTree({owner, repo, token, blobs, baseTreeSha}){
     headers,
     payload: JSON.stringify(payload)
   }
-
   const resp = UrlFetchApp.fetch(url, options)
   return JSON.parse(resp.getContentText())
 }
@@ -442,7 +472,6 @@ function createCommit({owner, repo, token, commitMessage, treeSha, parentCommitS
     accept : 'application/vnd.github+json',
     authorization: `Bearer ${token}`,
   }
-
   const payload = {
     message: commitMessage,
     tree: treeSha,
@@ -453,7 +482,6 @@ function createCommit({owner, repo, token, commitMessage, treeSha, parentCommitS
     headers,
     payload: JSON.stringify(payload)
   }
-
   const resp = UrlFetchApp.fetch(url, options)
   return JSON.parse(resp.getContentText())
 }
@@ -478,8 +506,6 @@ function createCommit({owner, repo, token, commitMessage, treeSha, parentCommitS
  * @param {string} config.commitSha
  */
 function updateReference({owner, repo, token, branchName, commitSha}){
-// patch
-// /repos/{owner}/{repo}/git/refs/{ref}
   const url = `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branchName}`
   const headers = {
     accept : 'application/vnd.github+json',
@@ -490,11 +516,10 @@ function updateReference({owner, repo, token, branchName, commitSha}){
     force: false
   }
   const options = {
-    method: 'POST',
+    method: 'PATCH',
     headers,
     payload: JSON.stringify(payload)
   }
-
   const resp = UrlFetchApp.fetch(url, options)
   return JSON.parse(resp.getContentText())
 }
@@ -502,40 +527,60 @@ function updateReference({owner, repo, token, branchName, commitSha}){
 /**
  * https://docs.github.com/en/rest/git/trees?apiVersion=2022-11-28#get-a-tree
  * @typedef {object} getTreeResponse
- * @prop {string} sha
- * @prop {string} url
- * @prop {boolean} truncated
- * @prop {GitTree.File[]} tree 
+  * @prop {string} sha
+  * @prop {string} url
+  * @prop {boolean} truncated
+  * @prop {GitTree.File[]} tree 
  * 
  * @typedef {object} GitTree.File
- * @prop {string} TreeObject.path
- * @prop {string} TreeObject.mode
- * @prop {string} TreeObject.type
- * @prop {string} TreeObject.sha
- * @prop {number} TreeObject.size
- * @prop {string} TreeObject.url
+  * @prop {string} TreeObject.path
+  * @prop {string} TreeObject.mode
+  * @prop {string} TreeObject.type
+  * @prop {string} TreeObject.sha
+  * @prop {number} TreeObject.size
+  * @prop {string} TreeObject.url
  * 
  * @param {object} config
- * @param {string} config.owner
- * @param {string} config.repo
- * @param {string} config.token
- * @param {string} config.branchName
+  * @param {string} config.owner
+  * @param {string} config.repo
+  * @param {string} config.token
+  * @param {string} config.branchName
  * 
  * @return {getTreeResponse}
  */
 function getTree({owner, repo, token, branchName}){
-  // /repos/{owner}/{repo}/git/trees/{tree_sha}
   const url = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branchName}`
   const headers = {
     accept : 'application/vnd.github+json',
     authorization: `Bearer ${token}`,
   }
-
   const options = {
     method: 'GET',
     headers,
   }
+  const resp = UrlFetchApp.fetch(url, options)
+  return JSON.parse(resp.getContentText())
+}
 
+/**
+ * https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#compare-two-commits
+ * @param {object} config
+ * @param {string} config.owner
+ * @param {string} config.repo
+ * @param {string} config.base
+ * @param {string} config.head
+ * @param {string} config.token
+ */
+function compareCommits({owner, repo, base, head, token}){
+  const url = `https://api.github.com/repos/${owner}/${repo}/compare/${base}...${head}`
+  const headers = {
+    accept : 'application/vnd.github+json',
+    authorization: `Bearer ${token}`,
+  }
+  const options = {
+    method: 'GET',
+    headers,
+  }
   const resp = UrlFetchApp.fetch(url, options)
   return JSON.parse(resp.getContentText())
 }

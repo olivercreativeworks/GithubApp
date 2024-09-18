@@ -1,7 +1,8 @@
 /**
  * @typedef GithubApi.ParentCommit
-  * @prop {string} mergeResponse.parents.sha SHA of the parent commit. Example: "5e3eeea2f9cbf2a2b34a262c227a8f8f7213e8c1"
-  * @prop {string} mergeResponse.parents.url URL of the parent commit. Example: "https://api.github.com/repos/octocat/Hello-World/commits/5e3eeea2f9cbf2a2b34a262c227a8f8f7213e8c1"
+  * @prop {string} sha SHA of the parent commit. 
+  * @prop {string} url URL of the parent commit.
+  * @prop {string} html_url
  */
 
 /**
