@@ -549,7 +549,7 @@ function updateReference({owner, repo, token, branchName, commitSha}){
  * @return {getTreeResponse}
  */
 function getTree({owner, repo, token, branchName}){
-  const url = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branchName}`
+  const url = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branchName}?recursive=1`
   const headers = {
     accept : 'application/vnd.github+json',
     authorization: `Bearer ${token}`,
