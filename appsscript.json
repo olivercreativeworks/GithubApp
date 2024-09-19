@@ -1,10 +1,18 @@
 {
   "timeZone": "America/New_York",
   "dependencies": {
+    "libraries": [
+      {
+        "userSymbol": "ScriptTemplate",
+        "version": "0",
+        "libraryId": "1SOzEYtHFFgO9OW4fFDkgmvCz5R1gnjAbcFXEea0fkUhB2YBNChbJrkNi",
+        "developmentMode": true
+      }
+    ]
   },
   "exceptionLogging": "STACKDRIVER",
   "runtimeVersion": "V8",
-  "oauthScopes":[
+  "oauthScopes": [
     "https://www.googleapis.com/auth/script.projects",
     "https://www.googleapis.com/auth/script.external_request"
   ]
