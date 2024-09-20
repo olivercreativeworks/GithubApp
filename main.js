@@ -21,7 +21,6 @@
  * @return {createRepoResponse}
  */
 function createRepo({token, name, description, isPrivate}){
-  // /user/repos
   const urlCreateRepo = `https://api.github.com/user/repos`
   const headers = {
     accept: 'application/vnd.github+json',
